@@ -67,7 +67,7 @@ gulp.task('server', function() {
 
   browserSync({
     port: 3000,
-    file: ['app/index.html', 'app/js/*.js'],
+    file: ['app/index.html', 'app/js/main.js'],
     ingectChanges: true,
     logFileChanges: false,
     logLevel: 'silent',
