@@ -2,7 +2,8 @@ var gulp = require('gulp');
 var uglify = require('gulp-uglify');
 var concat = require('gulp-concat');
 var minifyCss = require('gulp-minify-css');
-var browserSync = require('browser-sync').create();
+var browserSync = require('browser-sync');
+var superstatic = require('superstatic');
 var del = require('del');
 var typescript = require('gulp-typescript');
 var tscConfig = require('./tsconfig.json');
@@ -10,14 +11,14 @@ var sourcemaps = require('gulp-sourcemaps');
 var tslint = require('gulp-tslint');
 
 gulp.task('tslint', function() {
-  return gulp.src('app/*.ts')
+  return gulp.src('app/ts/*.ts')
     .pipe(tslint())
-    .pipe(tslint().report('verbose'));
+    .pipe(tslint.report('vervose'));
 });
 
 gulp.task('copy:assets', ['clean'], function() {
-  return gulp.src(['index.html'])
-    .pipe(gulp.dest('dest'));
+  return gulp.src(['app/index.html'])
+    .pipe(gulp.dest('dist'));
 });
 
 gulp.task('clean', function() {
@@ -25,11 +26,11 @@ gulp.task('clean', function() {
 });
 
 gulp.task('compile', ['clean'], function() {
-  return gulp.src(tscConfig.files)
+  return gulp.src('app/ts/*.ts')
     .pipe(sourcemaps.init())
     .pipe(typescript(tscConfig.compilerOptions))
     .pipe(sourcemaps.write('.'))
-    .pipe(gulp.dest('dist/'));
+    .pipe(gulp.dest('app/js'));
 });
 
 gulp.task('copy:libs', ['clean'], function() {
@@ -42,35 +43,42 @@ gulp.task('copy:libs', ['clean'], function() {
       'node_modules/rxjs/bundles/Rx.js',
       'node_modules/angular2/bundles/angular2.dev.js'
     ])
-    .pipe(gulp.dest('dist/lib'))
+    .pipe(concat('lib.js'))
+    .pipe(gulp.dest('app/js'));
 });
 
 gulp.task('uglify', function() {
   return gulp.src('app/*.js')
-    .pipe(concat('main.js'))
+    .pipe(concat('service.min.js'))
     .pipe(uglify())
-    .pipe(gulp.dest('dist'))
+    .pipe(gulp.dest('dist/js'))
     .pipe(browserSync.reload({stream:true}));
 });
 
 gulp.task('minifycss', function() {
-  return gulp.src('*.css')
+  return gulp.src('app/css/*.css')
     .pipe(minifyCss())
     .pipe(gulp.dest('dist/css'))
     .pipe(browserSync.reload({stream:true}));
 });
 
-gulp.task('watch', function() {
-  gulp.watch(['app/*.js', '*.css'], ['uglify', 'minifycss']);
-});
+gulp.task('server', function() {
+  gulp.watch(['app/ts/*.ts'], ['tslint', 'compile']);
 
-gulp.task('server', ['uglify', 'minify'], function() {
-  return browserSync.init({
+  browserSync({
+    port: 3000,
+    file: ['app/index.html', 'app/js/*.js'],
+    ingectChanges: true,
+    logFileChanges: false,
+    logLevel: 'silent',
+    norify: true,
+    reloadDelay: 0,
     server: {
-      baseDir: 'dist'
+      baseDir: 'app',
+      middleware: superstatic({debug: false})
     }
   });
 });
 
-gulp.task('default', ['tslint', 'compile', 'copy:libs', 'copy:assets', 'uglify', 'minifycss']);
-gulp.task('dev', ['tslint', 'compile', 'copy:libs', 'copy:assets', 'uglify', 'minifycss', 'watch']);
+gulp.task('dev', ['copy:libs', 'server']);
+gulp.task('build', ['tslint', 'compile', 'copy:libs', 'copy:assets']);
